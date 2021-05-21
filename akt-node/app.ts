@@ -1,20 +1,20 @@
-import akt from "./src";
+import akt, { AktContext } from "./src";
 
 const app = akt();
 
-app.get("/", (req, res) => {
-  let message = "";
-  res.statusCode = 200;
-  Object.keys(req.headers).forEach((header) => {
-    message += `Header[${header}] = ${req.headers[header]} \n`;
-  });
-  res.end(message);
+app.get("/", (ctx: AktContext) => {
+  ctx.HTML(200, "<h1>Hello Workd!</h1>");
 });
 
-app.get("/hello", (req, res) => {
-  res.statusCode = 200;
-  res.statusMessage = "hello world!";
-  res.end();
+app.get("/hello", (ctx: AktContext) => {
+  ctx.string(200, `hello ${ctx.query("name")}, you're at ${ctx.path}\n`);
+});
+
+app.post("/login", (ctx: AktContext) => {
+  ctx.JSON(200, {
+    username: ctx.postForm("username"),
+    password: ctx.postForm("password"),
+  });
 });
 
 app.run("9999", () => {

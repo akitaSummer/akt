@@ -1,41 +1,51 @@
 import http from "http";
+import { Context } from "./context";
+import { Router } from "./router";
+
+export { Context as AktContext } from "./context";
+export { Router as AktRouter } from "./router";
+import util from "util";
+import querystring from "querystring";
+import parse from "co-body";
+
+export type HandlerFunc = (ctx: Context) => void;
 
 class Akt {
   private server: http.Server;
-  private router: Map<string, http.RequestListener>;
+  private router: Router;
 
   constructor(requestListener?: http.RequestListener) {
     this.server = http.createServer(requestListener);
-    this.router = new Map();
+    this.router = new Router();
     this.server.on(
       "request",
-      (requset: http.IncomingMessage, response: http.ServerResponse) => {
-        const handler = this.router.get(`${requset.method}-${requset.url}`);
-        if (handler) {
-          handler(requset, response);
-        } else {
-          console.log(`404 NOT FOUND: ${requset.url}`);
-          response.statusCode = 404;
-          response.statusMessage = `404 NOT FOUND: ${requset.url}`;
-          response.end();
-        }
+      (
+        requset: http.IncomingMessage & { body?: any },
+        response: http.ServerResponse
+      ) => {
+        // 处理post请求
+        requset.body = "";
+        requset.on("data", (chuck) => {
+          requset.body += chuck;
+        });
+        requset.on("end", () => {
+          if (requset.headers["content-type"]?.includes("application/json")) {
+            requset.body = JSON.parse(requset.body);
+          } else if (requset.method === "POST") {
+            requset.body = querystring.parse(requset.body);
+          }
+          const ctx = new Context(requset, response);
+          this.router.handle(ctx);
+        });
       }
     );
   }
 
-  private addRoute = (
-    method: string,
-    pattern: string,
-    handler: http.RequestListener
-  ) => {
-    this.router.set(`${method}-${pattern}`, handler);
+  get = (pattern: string, handler: HandlerFunc) => {
+    this.router.addRoute("GET", pattern, handler);
   };
-
-  get = (pattern: string, handler: http.RequestListener) => {
-    this.addRoute("GET", pattern, handler);
-  };
-  post = (pattern: string, handler: http.RequestListener) => {
-    this.addRoute("POST", pattern, handler);
+  post = (pattern: string, handler: HandlerFunc) => {
+    this.router.addRoute("POST", pattern, handler);
   };
 
   getServer = () => {
