@@ -1,7 +1,5 @@
 import http from "http";
-import querystring from "querystring";
 import url from "url";
-import util from "util";
 
 export type ContextOptionsType = {
   [propsName: string]: any;
@@ -13,6 +11,7 @@ export class Context {
   path: string;
   method: string;
   statusCode: number;
+  params: Map<string, string>;
 
   private URL: url.URL;
   constructor(requset: http.IncomingMessage, response: http.ServerResponse) {
@@ -21,6 +20,7 @@ export class Context {
     this.URL = new url.URL(`http://${this.req.headers.host}${this.req.url}`);
     this.path = this.URL.pathname;
     this.method = requset.method;
+    this.params = new Map();
   }
 
   query = (key: string) => {
@@ -70,5 +70,9 @@ export class Context {
     this.setHeader("Content-Type", "text/html");
     this.status(code);
     this.res.end(HTML);
+  };
+
+  param = (key: string) => {
+    return this.params.get(key);
   };
 }

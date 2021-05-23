@@ -23,6 +23,15 @@ func main() {
 		})
 	})
 
+	r.GET("/hello/:name", func(c *akt.Context) {
+		// expect /hello/geektutu
+		c.String(http.StatusOK, "hello %s, you're at %s\n", c.Param("name"), c.Path)
+	})
+
+	r.GET("/assets/*filepath", func(c *akt.Context) {
+		c.JSON(http.StatusOK, akt.Obj{"filepath": c.Param("filepath")})
+	})
+
 	err := r.Run(":9999")
 
 	if err != nil {

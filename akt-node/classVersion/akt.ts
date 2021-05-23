@@ -1,12 +1,8 @@
 import http from "http";
+import querystring from "querystring";
+
 import { Context } from "./context";
 import { Router } from "./router";
-
-export { Context as AktContext } from "./context";
-export { Router as AktRouter } from "./router";
-import util from "util";
-import querystring from "querystring";
-import parse from "co-body";
 
 export type HandlerFunc = (ctx: Context) => void;
 
@@ -17,6 +13,7 @@ class Akt {
   constructor(requestListener?: http.RequestListener) {
     this.server = http.createServer(requestListener);
     this.router = new Router();
+    // 监听请求
     this.server.on(
       "request",
       (
@@ -41,6 +38,7 @@ class Akt {
     );
   }
 
+  // 建立get、post路由方法
   get = (pattern: string, handler: HandlerFunc) => {
     this.router.addRoute("GET", pattern, handler);
   };
@@ -48,10 +46,12 @@ class Akt {
     this.router.addRoute("POST", pattern, handler);
   };
 
+  // 返回server实例，可用于多进程
   getServer = () => {
     return this.server;
   };
 
+  // 设置监听端口
   run = (addr: string, listeningListener?: () => void) => {
     return this.server.listen(addr, listeningListener);
   };
