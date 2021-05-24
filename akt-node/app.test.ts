@@ -27,7 +27,8 @@ const objAssert = (value: object, expected: object) => {
 test.before(async (t) => {
   const app = await spawn("node", [join(__dirname, "./app.js")]);
   await new Promise((resolve) => {
-    app.stdout.on("data", () => {
+    app.stdout.on("data", (m) => {
+      console.log(m.toString()); // app is running in http://localhost:9999/
       resolve("");
     });
   });
@@ -69,5 +70,49 @@ test("test trie tree", async (t) => {
     method: "GET",
   });
   t.is(res.data, `hello akita`);
+  t.pass();
+});
+
+test("test route group control", async (t) => {
+  {
+    const res = await axios({
+      url: "http://localhost:9999/v1/",
+      method: "GET",
+    });
+    t.is(res.data, `<h1>you are at /v1/</h1>`);
+  }
+
+  {
+    const res = await axios({
+      url: "http://localhost:9999/v1/hello?name=akita",
+      method: "GET",
+    });
+    t.is(res.data, `hello akita, you are at /v1/hello`);
+  }
+
+  {
+    const res = await axios({
+      url: "http://localhost:9999/v1/v2/hello/akita",
+      method: "GET",
+    });
+    t.is(res.data, `hello akita, you're at /v1/v2/hello/akita`);
+  }
+
+  {
+    const res = await axios({
+      url: "http://localhost:9999/v1/v2/login",
+      method: "POST",
+      data: {
+        username: "akita",
+        password: "akita",
+      },
+    });
+    t.deepEqual(res.data, {
+      username: "akita",
+      password: "akita",
+      path: `/v1/v2/login`,
+    });
+  }
+
   t.pass();
 });

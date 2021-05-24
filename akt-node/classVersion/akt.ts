@@ -6,13 +6,49 @@ import { Router } from "./router";
 
 export type HandlerFunc = (ctx: Context) => void;
 
-class Akt {
+class RouterGroup {
+  prefix: string;
+  protected parent: RouterGroup | Akt;
+  protected middleware: HandlerFunc[];
+  protected akt: Akt;
+
+  constructor(prefix: string, parent: RouterGroup | Akt, akt: Akt) {
+    this.prefix = (parent ? parent.prefix : "") + prefix;
+    this.parent = parent;
+    this.akt = akt;
+  }
+
+  group = (prefix: string) => {
+    const newGruop = new RouterGroup(prefix, this, this.akt);
+    this.akt.groups.push(newGruop);
+    return newGruop;
+  };
+
+  get = (pattern: string, handler: HandlerFunc) => {
+    this.addRoute("GET", pattern, handler);
+  };
+  post = (pattern: string, handler: HandlerFunc) => {
+    this.addRoute("POST", pattern, handler);
+  };
+
+  protected addRoute = (method: string, comp: string, handler: HandlerFunc) => {
+    const pattern = this.prefix + comp;
+    this.akt.addRoute(method, pattern, handler);
+  };
+}
+
+class Akt extends RouterGroup {
   private server: http.Server;
   private router: Router;
+  groups: (RouterGroup | Akt)[];
 
   constructor(requestListener?: http.RequestListener) {
+    super("", null, null);
+    this.akt = this;
+    this.parent = null;
     this.server = http.createServer(requestListener);
     this.router = new Router();
+    this.groups = [this];
     // 监听请求
     this.server.on(
       "request",
@@ -38,14 +74,6 @@ class Akt {
     );
   }
 
-  // 建立get、post路由方法
-  get = (pattern: string, handler: HandlerFunc) => {
-    this.router.addRoute("GET", pattern, handler);
-  };
-  post = (pattern: string, handler: HandlerFunc) => {
-    this.router.addRoute("POST", pattern, handler);
-  };
-
   // 返回server实例，可用于多进程
   getServer = () => {
     return this.server;
@@ -54,6 +82,10 @@ class Akt {
   // 设置监听端口
   run = (addr: string, listeningListener?: () => void) => {
     return this.server.listen(addr, listeningListener);
+  };
+
+  addRoute = (method: string, pattern: string, handler: HandlerFunc) => {
+    this.router.addRoute(method, pattern, handler);
   };
 }
 
