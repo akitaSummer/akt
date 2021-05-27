@@ -1,6 +1,8 @@
 import http from "http";
 import url from "url";
 
+import { HandlerFunc } from "./akt";
+
 export type ContextOptionsType = {
   [propsName: string]: any;
 };
@@ -12,6 +14,9 @@ export class Context {
   method: string;
   statusCode: number;
   params: Map<string, string>;
+  private index: number;
+  hanlders: HandlerFunc[];
+  resData: any
 
   private URL: url.URL;
   constructor(requset: http.IncomingMessage, response: http.ServerResponse) {
@@ -21,6 +26,9 @@ export class Context {
     this.path = this.URL.pathname;
     this.method = requset.method;
     this.params = new Map();
+    this.index = -1;
+    this.hanlders = [];
+    this.resData = null
   }
 
   query = (key: string) => {
@@ -46,7 +54,7 @@ export class Context {
   string = (code: number, str: string) => {
     this.setHeader("Content-Type", "text/plain");
     this.status(code);
-    this.res.end(str);
+    this.resData = str;
   };
 
   JSON = (code: number, obj: object) => {
@@ -54,7 +62,7 @@ export class Context {
     this.status(code);
     try {
       const data = JSON.stringify(obj);
-      this.res.end(data);
+      this.resData = data;
     } catch (e) {
       console.log(e);
       this.res.end(JSON.stringify({ err: e.toStirng() }));
@@ -63,16 +71,24 @@ export class Context {
 
   data = (code: number, data: any) => {
     this.status(code);
-    this.res.end(data);
+    this.resData = data;
   };
 
   HTML = (code: number, HTML: string) => {
     this.setHeader("Content-Type", "text/html");
     this.status(code);
-    this.res.end(HTML);
+    this.resData = HTML;
   };
 
   param = (key: string) => {
     return this.params.get(key);
+  };
+
+  next = async () => {
+    this.index++
+    while(this.index < this.hanlders.length) {
+      this.hanlders[this.index](this)
+      this.index++
+    }
   };
 }

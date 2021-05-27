@@ -37,16 +37,18 @@ export class Router {
     this.handlers.set(`${method}-${pattern}`, handler);
   };
 
-  handle = (ctx: Context) => {
+  handle = async (ctx: Context) => {
     const { node, params } = this.getRouter(ctx.method, ctx.path);
     if (node) {
       ctx.params = params;
       const key = `${ctx.method}-${node.pattern}`;
       const handler = this.handlers.get(key);
-      handler(ctx);
+      ctx.hanlders.push(handler);
     } else {
       ctx.string(404, `404 NOT FOUND: ${ctx.path}`);
     }
+    await ctx.next();
+    ctx.res.end(ctx.resData);
   };
   getRouter = (method: string, path: string) => {
     const searchParts = parsePattern(path);

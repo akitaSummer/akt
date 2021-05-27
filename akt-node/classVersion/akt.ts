@@ -9,13 +9,14 @@ export type HandlerFunc = (ctx: Context) => void;
 class RouterGroup {
   prefix: string;
   protected parent: RouterGroup | Akt;
-  protected middleware: HandlerFunc[];
+  middlewares: HandlerFunc[];
   protected akt: Akt;
 
   constructor(prefix: string, parent: RouterGroup | Akt, akt: Akt) {
     this.prefix = (parent ? parent.prefix : "") + prefix;
     this.parent = parent;
     this.akt = akt;
+    this.middlewares = [];
   }
 
   group = (prefix: string) => {
@@ -34,6 +35,10 @@ class RouterGroup {
   protected addRoute = (method: string, comp: string, handler: HandlerFunc) => {
     const pattern = this.prefix + comp;
     this.akt.addRoute(method, pattern, handler);
+  };
+
+  use = (handler: HandlerFunc) => {
+    this.middlewares.push(handler);
   };
 }
 
@@ -67,7 +72,14 @@ class Akt extends RouterGroup {
           } else if (requset.method === "POST") {
             requset.body = querystring.parse(requset.body);
           }
+          let middlewares: HandlerFunc[] = [];
+          for (let i = 0; i < this.groups.length; i++) {
+            if (requset.url.includes(this.groups[i].prefix)) {
+              middlewares = [...middlewares, ...this.groups[i].middlewares];
+            }
+          }
           const ctx = new Context(requset, response);
+          ctx.hanlders = middlewares;
           this.router.handle(ctx);
         });
       }

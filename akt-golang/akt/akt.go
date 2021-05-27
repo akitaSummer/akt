@@ -2,6 +2,7 @@ package akt
 
 import (
 	"net/http"
+	"strings"
 )
 
 type HandlerFunc func(*Context)
@@ -25,7 +26,14 @@ func (engine *Engine) Run(addr string) (err error) {
 }
 
 func (engine *Engine) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	middleware := make([]HandlerFunc, 0)
+	for _, group := range engine.groups {
+		if strings.HasPrefix(req.URL.Path, group.prefix) {
+			middleware = append(middleware, group.middlewares...)
+		}
+	}
 	c := newContext(w, req)
+	c.handlers = middleware
 	engine.router.handle(c)
 }
 

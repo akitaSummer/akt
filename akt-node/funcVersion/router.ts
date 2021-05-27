@@ -49,16 +49,18 @@ const getRouter = () => {
       insert(router.roots.get(method), pattern, parts, 0);
       router.handlers.set(`${method}-${pattern}`, handler);
     },
-    handle: (ctx: AktContext) => {
+    handle: async (ctx: AktContext) => {
       const { node, params } = router.getRouter(ctx.method, ctx.path);
       if (node) {
         ctx.params = params;
         const key = `${ctx.method}-${node.pattern}`;
         const handler = router.handlers.get(key);
-        handler(ctx);
+        ctx.handlers.push(handler);
       } else {
         ctx.string(404, `404 NOT FOUND: ${ctx.path}`);
       }
+      await ctx.next();
+      ctx.res.end(ctx.resData)
     },
     getRouter: (method: string, path: string) => {
       const searchParts = parsePattern(path);

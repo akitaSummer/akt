@@ -30,3 +30,7 @@ func (group *RouterGroup) GET(comp string, handler HandlerFunc) {
 func (group *RouterGroup) POST(comp string, handler HandlerFunc) {
 	group.addRoute("POST", comp, handler)
 }
+
+func (group *RouterGroup) Use(handler HandlerFunc) {
+	group.middlewares = append(group.middlewares, handler)
+}

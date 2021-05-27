@@ -116,3 +116,23 @@ test("test route group control", async (t) => {
 
   t.pass();
 });
+
+test("test middlewares", async (t) => {
+  {
+    const res = await axios({
+      url: "http://localhost:9999/v1/",
+      method: "GET",
+    });
+    t.is(res.headers["token-v1"], `onlyForV1`);
+    t.is(res.headers["token-v2"], undefined);
+  }
+  {
+    const res = await axios({
+      url: "http://localhost:9999/v1/v2/hello/akita",
+      method: "GET",
+    });
+    t.is(res.headers["token-v1"], `onlyForV1`);
+    t.is(res.headers["token-v2"], `onlyForV2`);
+  }
+  t.pass();
+});

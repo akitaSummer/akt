@@ -34,8 +34,13 @@ app.get("/assets/*filepath", (ctx: AktContext) => {
   ctx.string(200, ` filepath is ${ctx.param("filepath")}`);
 });
 
+const onlyForV1 = async (ctx: AktContext) => {
+  await ctx.next();
+  ctx.setHeader("Token-V1", "onlyForV1");
+};
 // 支持分组
 const v1 = app.group("/v1");
+v1.use(onlyForV1);
 
 v1.get("/", (ctx) => {
   ctx.HTML(200, `<h1>you are at ${ctx.path}</h1>`);
@@ -45,7 +50,18 @@ v1.get("/hello", (ctx) => {
   ctx.string(200, `hello ${ctx.query("name")}, you are at ${ctx.path}`);
 });
 
+const onlyForV2 = async (ctx: AktContext) => {
+  await new Promise((resolve) => {
+    ctx.setHeader("Token-V2", "onlyForV2");
+    setTimeout(() => {
+      resolve("");
+    }, 100);
+  });
+  await ctx.next();
+};
+
 const v2 = v1.group("/v2");
+v2.use(onlyForV2);
 
 v2.get("/hello/:name", (ctx) => {
   ctx.string(200, `hello ${ctx.param("name")}, you're at ${ctx.path}`);

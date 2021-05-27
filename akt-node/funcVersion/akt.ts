@@ -1,3 +1,4 @@
+import { group } from "console";
 import http from "http";
 import querystring from "querystring";
 
@@ -23,6 +24,7 @@ export type RouterGroupType = {
   ) => void;
   get: (pattern: string, handler: HandlerFunc) => void;
   post: (pattern: string, handler: HandlerFunc) => void;
+  use: (middlewares: HandlerFunc) => void;
 };
 
 export type HandlerFunc = (ctx: AktContext) => void;
@@ -34,7 +36,8 @@ export type AktType = {
   get: (pattern: string, handler: HandlerFunc) => void;
   post: (pattern: string, handler: HandlerFunc) => void;
   run: (addr: string, listeningListener?: () => void) => http.Server;
-} & Omit<RouterGroupType, "addRoute" | "post" | "get">;
+  use: (middlewares: HandlerFunc, group?: RouterGroupType) => void;
+} & Omit<RouterGroupType, "addRoute" | "post" | "get" | "use">;
 
 const akt = (requestListener?: http.RequestListener) => {
   const akt: AktType = {
@@ -58,6 +61,11 @@ const akt = (requestListener?: http.RequestListener) => {
     // 设置监听端口
     run: (addr: string, listeningListener?: () => void) =>
       akt.server.listen(addr, listeningListener),
+    use: (middlewares: HandlerFunc, group?: RouterGroupType) => {
+      group
+        ? group.middlewares.push(middlewares)
+        : akt.middlewares.push(middlewares);
+    },
     // 建立新分组
     group: (prefix: string, parentGroup?: RouterGroupType) => {
       const group = parentGroup || akt;
@@ -76,6 +84,9 @@ const akt = (requestListener?: http.RequestListener) => {
         },
         post: (pattern: string, handler: HandlerFunc) => {
           newGroup.addRoute("POST", pattern, handler, newGroup);
+        },
+        use: (middlewares: HandlerFunc) => {
+          akt.use(middlewares, newGroup);
         },
       };
 
@@ -103,8 +114,15 @@ const akt = (requestListener?: http.RequestListener) => {
         } else if (requset.method === "POST") {
           requset.body = querystring.parse(requset.body);
         }
+        let middlewares: HandlerFunc[] = [];
+        for (let i = 0; i < akt.groups.length; i++) {
+          if (requset.url.includes(akt.groups[i].prefix)) {
+            middlewares = [...middlewares, ...akt.groups[i].middlewares];
+          }
+        }
         // data接收完毕后创建context,并执行
         const ctx = getContext(requset, response);
+        ctx.handlers = middlewares;
         akt.router.handle(ctx);
       });
     }

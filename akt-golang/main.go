@@ -2,10 +2,18 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
+	"time"
 
 	"akt/akt"
 )
+
+func onlyForV2(c *akt.Context) {
+	t := time.Now()
+	c.String(500, "Internal Server Error. ")
+	log.Printf("[%d] %s in %v for group v2", c.StatusCode, c.Req.RequestURI, time.Since(t))
+}
 
 func main() {
 	r := akt.New()
@@ -35,14 +43,16 @@ func main() {
 	v1 := r.Group("/v1")
 	{
 		v1.GET("/", func(c *akt.Context) {
-			c.HTML(http.StatusOK, "<h1>Hello Gee</h1>")
+			c.HTML(http.StatusOK, "<h1>Hello Akt</h1>")
 		})
 
 		v1.GET("/hello", func(c *akt.Context) {
 			c.String(http.StatusOK, "hello %s, you're at %s\n", c.Query("name"), c.Path)
 		})
 	}
+
 	v2 := r.Group("/v2")
+	v2.Use(onlyForV2)
 	{
 		v2.GET("/hello/:name", func(c *akt.Context) {
 			c.String(http.StatusOK, "hello %s, you're at %s\n", c.Param("name"), c.Path)

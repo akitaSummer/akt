@@ -13,6 +13,8 @@ type Context struct {
 	Method     string
 	StatusCode int
 	Params     map[string]string
+	index      int
+	handlers   []HandlerFunc
 }
 
 type Obj map[string]interface{}
@@ -23,6 +25,7 @@ func newContext(writer http.ResponseWriter, req *http.Request) *Context {
 		Writer: writer,
 		Path:   req.URL.Path,
 		Method: req.Method,
+		index:  -1,
 	}
 }
 
@@ -72,4 +75,13 @@ func (c *Context) HTML(code int, html string) {
 func (c *Context) Param(key string) string {
 	value, _ := c.Params[key]
 	return value
+}
+
+func (c *Context) Next() {
+	c.index++
+	s := len(c.handlers)
+	for c.index < s {
+		c.handlers[c.index](c)
+		c.index++
+	}
 }

@@ -3,6 +3,8 @@ package akt
 import (
 	"net/http"
 	"strings"
+
+	"fmt"
 )
 
 type router struct {
@@ -42,6 +44,7 @@ func (router *router) addRoute(method string, pattern string, handler HandlerFun
 	}
 
 	router.roots[method].insert(pattern, parts, 0)
+
 	router.handlers[name] = handler
 }
 
@@ -77,11 +80,14 @@ func (router *router) getRoute(method string, path string) (*node, map[string]st
 
 func (router *router) handle(c *Context) {
 	n, params := router.getRoute(c.Method, c.Path)
+	fmt.Printf("%v", n)
 	if n != nil {
 		c.Params = params
 		key := c.Method + "-" + n.pattern
-		router.handlers[key](c)
+		handler := router.handlers[key]
+		c.handlers = append(c.handlers, handler)
 	} else {
 		c.String(http.StatusNotFound, "404 NOT FOUND: %s\n", c.Path)
 	}
+	c.Next()
 }

@@ -7,7 +7,7 @@
     "license": "MIT",
     "scripts": {
         "dev": "concurrently \"tsc --watch\" \"nodemon dist/app.js\"",
-        "test": "ava"
+        "test": "tsc && ava"
     },
     "devDependencies": {
         "@types/node": "^15.3.1",
