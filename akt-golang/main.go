@@ -2,12 +2,18 @@ package main
 
 import (
 	"fmt"
+	"html/template"
 	"log"
 	"net/http"
 	"time"
 
 	"akt/akt"
 )
+
+func FormatAsDate(t time.Time) string {
+	year, month, day := t.Date()
+	return fmt.Sprintf("%d-%02d-%02d", year, month, day)
+}
 
 func onlyForV2(c *akt.Context) {
 	t := time.Now()
@@ -18,7 +24,7 @@ func onlyForV2(c *akt.Context) {
 func main() {
 	r := akt.New()
 	r.GET("/", func(c *akt.Context) {
-		c.HTML(http.StatusOK, "<h1>Hello World!</h1>")
+		c.String(http.StatusOK, "Hello World!")
 	})
 	r.GET("/hello", func(c *akt.Context) {
 		c.String(http.StatusOK, "hello %s, you're at %s\n", c.Query("name"), c.Path)
@@ -43,7 +49,7 @@ func main() {
 	v1 := r.Group("/v1")
 	{
 		v1.GET("/", func(c *akt.Context) {
-			c.HTML(http.StatusOK, "<h1>Hello Akt</h1>")
+			c.String(http.StatusOK, "Hello Akt")
 		})
 
 		v1.GET("/hello", func(c *akt.Context) {
@@ -65,6 +71,19 @@ func main() {
 		})
 
 	}
+
+	r.Static("/assets", "./assets")
+
+	r.LoadHTMLGlob("assets/*")
+	r.SetFuncMap(template.FuncMap{
+		"FormatAsDate": FormatAsDate,
+	})
+
+	r.GET("/template", func(c *akt.Context) {
+		c.HTML(http.StatusOK, "template.tmpl", akt.Obj{
+			"Name": "akita",
+		})
+	})
 
 	err := r.Run(":9999")
 

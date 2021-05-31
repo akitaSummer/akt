@@ -1,8 +1,12 @@
 import http from "http";
 import url from "url";
-import { HandlerFunc } from "./akt";
+import { join } from "path";
+import { Options, LocalsObject } from "pug";
+
+import { HandlerFunc, AktType } from "./akt";
 
 export type AktContext = {
+  akt: AktType;
   req: http.IncomingMessage & { body?: any };
   res: http.ServerResponse;
   path: string; // 路径
@@ -20,16 +24,18 @@ export type AktContext = {
   string: (code: number, str: string) => void; // 返回string
   JSON: (code: number, obj: object) => void; // 返回json
   data: (code: number, data: any) => void; // 返回data
-  HTML: (code: number, HTML: string) => void; // 返回html
+  HTML: (code: number, name: string, options?: Options & LocalsObject) => void; // 返回html
   param: (key: string) => string;
 };
 
 const getContext = (
   requset: http.IncomingMessage & { body?: any },
-  response: http.ServerResponse
+  response: http.ServerResponse,
+  akt: AktType
 ) => {
   const URL = new url.URL(`http://${requset.headers.host}${requset.url}`);
   const context: AktContext = {
+    akt,
     req: requset,
     res: response,
     path: URL.pathname,
@@ -91,10 +97,13 @@ const getContext = (
       }
     },
 
-    HTML: (code: number, HTML: string) => {
+    HTML: (code: number, name: string, options?: Options & LocalsObject) => {
       context.setHeader("Content-Type", "text/html");
       context.status(code);
-      context.resData = HTML;
+      context.resData = akt.pug.renderFile(
+        join(akt.templateRoot, name),
+        options
+      );
     },
 
     param: (key: string) => {

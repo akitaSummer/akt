@@ -48,6 +48,9 @@ export class Router {
       ctx.string(404, `404 NOT FOUND: ${ctx.path}`);
     }
     await ctx.next();
+    if (typeof ctx.resData === "object") {
+      ctx.resData = JSON.stringify(ctx.resData);
+    }
     ctx.res.end(ctx.resData);
   };
   getRouter = (method: string, path: string) => {

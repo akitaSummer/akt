@@ -1,10 +1,43 @@
 import http from "http";
 import querystring from "querystring";
+import { join, resolve, parse } from "path";
+import { createReadStream } from "fs";
+import { stat } from "fs/promises";
+import { getType } from "mime";
+import pug from "pug";
 
 import { Context } from "./context";
 import { Router } from "./router";
+import { AktContext } from "classVersion";
 
 export type HandlerFunc = (ctx: Context) => void;
+
+const createStaticHandler = (root: string): HandlerFunc => {
+  const absolutePath = join(resolve("."), root);
+  return async (ctx: AktContext) => {
+    try {
+      const filePath = join(absolutePath, ctx.param("filepath"));
+      const fileName = await stat(filePath);
+      if (fileName.isFile()) {
+        const ext = parse(filePath).ext;
+        const mimeType = getType(ext);
+        ctx.setHeader("Content-Type", mimeType);
+        const pipe = createReadStream(filePath).pipe(ctx.res);
+        await new Promise((resolve) => {
+          pipe.on("end", () => {
+            resolve("");
+          });
+        });
+      } else {
+        throw Error("File is not found!");
+      }
+    } catch (e) {
+      ctx.string(404, "File is not found!");
+      ctx.setHeader("Content-Type", "text/plain");
+      ctx.res.end();
+    }
+  };
+};
 
 class RouterGroup {
   prefix: string;
@@ -40,12 +73,20 @@ class RouterGroup {
   use = (handler: HandlerFunc) => {
     this.middlewares.push(handler);
   };
+
+  static = (relativePath: string, root: string) => {
+    const handler = createStaticHandler(root);
+    const urlPattern = join(relativePath, "/*filepath").replace(/\\/g, "/");
+    this.get(urlPattern, handler);
+  };
 }
 
-class Akt extends RouterGroup {
+export class Akt extends RouterGroup {
   private server: http.Server;
   private router: Router;
   groups: (RouterGroup | Akt)[];
+  pug: typeof pug;
+  templateRoot: string;
 
   constructor(requestListener?: http.RequestListener) {
     super("", null, null);
@@ -54,6 +95,8 @@ class Akt extends RouterGroup {
     this.server = http.createServer(requestListener);
     this.router = new Router();
     this.groups = [this];
+    this.pug = pug;
+    this.templateRoot = null;
     // 监听请求
     this.server.on(
       "request",
@@ -78,7 +121,7 @@ class Akt extends RouterGroup {
               middlewares = [...middlewares, ...this.groups[i].middlewares];
             }
           }
-          const ctx = new Context(requset, response);
+          const ctx = new Context(requset, response, this);
           ctx.hanlders = middlewares;
           this.router.handle(ctx);
         });
@@ -98,6 +141,10 @@ class Akt extends RouterGroup {
 
   addRoute = (method: string, pattern: string, handler: HandlerFunc) => {
     this.router.addRoute(method, pattern, handler);
+  };
+
+  loadHTMLGlob = (pattern: string) => {
+    this.templateRoot = join(resolve("."), pattern);
   };
 }
 

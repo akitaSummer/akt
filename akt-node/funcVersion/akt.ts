@@ -1,9 +1,40 @@
-import { group } from "console";
 import http from "http";
 import querystring from "querystring";
+import { join, parse, resolve } from "path";
+import { getType } from "mime";
+import { createReadStream } from "fs";
+import { stat } from "fs/promises";
+import pug from "pug";
 
 import getContext, { AktContext } from "./context";
 import getRouter, { AktRouter } from "./router";
+
+const createStaticHandler = (root: string) => {
+  const absolutePath = join(resolve("."), root);
+  return async (ctx: AktContext) => {
+    try {
+      const filePath = join(absolutePath, ctx.param("filepath"));
+      const fileName = await stat(filePath);
+      if (fileName.isFile()) {
+        const ext = parse(filePath).ext;
+        const mimeType = getType(ext);
+        ctx.setHeader("Content-Type", mimeType);
+        const pipe = createReadStream(filePath).pipe(ctx.res);
+        await new Promise((resolve) => {
+          pipe.on("end", () => {
+            resolve("");
+          });
+        });
+      } else {
+        throw Error("File is not found!");
+      }
+    } catch (e) {
+      ctx.string(404, "File is not found!");
+      ctx.setHeader("Content-Type", "text/plain");
+      ctx.res.end(ctx.resData);
+    }
+  };
+};
 
 export type RouterGroupType = {
   // 前缀
@@ -25,6 +56,7 @@ export type RouterGroupType = {
   get: (pattern: string, handler: HandlerFunc) => void;
   post: (pattern: string, handler: HandlerFunc) => void;
   use: (middlewares: HandlerFunc) => void;
+  static: (relativePath: string, root: string, group?: RouterGroupType) => void;
 };
 
 export type HandlerFunc = (ctx: AktContext) => void;
@@ -32,10 +64,13 @@ export type HandlerFunc = (ctx: AktContext) => void;
 export type AktType = {
   server: http.Server;
   router: AktRouter;
+  templateRoot: string;
+  pug: typeof pug;
   groups: (RouterGroupType | AktType)[];
   get: (pattern: string, handler: HandlerFunc) => void;
   post: (pattern: string, handler: HandlerFunc) => void;
   run: (addr: string, listeningListener?: () => void) => http.Server;
+  loadHTMLGlob: (pattern: string) => void;
   use: (middlewares: HandlerFunc, group?: RouterGroupType) => void;
 } & Omit<RouterGroupType, "addRoute" | "post" | "get" | "use">;
 
@@ -50,6 +85,8 @@ const akt = (requestListener?: http.RequestListener) => {
     parent: null,
     akt: null,
     groups: [],
+    pug: pug,
+    templateRoot: null,
     // 设置get请求的路由
     get: (pattern: string, handler: HandlerFunc, group?: RouterGroupType) => {
       akt.router.addRoute("GET", pattern, handler);
@@ -65,6 +102,15 @@ const akt = (requestListener?: http.RequestListener) => {
       group
         ? group.middlewares.push(middlewares)
         : akt.middlewares.push(middlewares);
+    },
+    static: (relativePath: string, root: string, group?: RouterGroupType) => {
+      const newGroup = group || akt;
+      const handler = createStaticHandler(root);
+      const urlPattern = join(relativePath, "/*filepath").replace(/\\/g, "/");
+      newGroup.get(urlPattern, handler);
+    },
+    loadHTMLGlob: (pattern: string) => {
+      akt.templateRoot = join(resolve("."), pattern);
     },
     // 建立新分组
     group: (prefix: string, parentGroup?: RouterGroupType) => {
@@ -87,6 +133,9 @@ const akt = (requestListener?: http.RequestListener) => {
         },
         use: (middlewares: HandlerFunc) => {
           akt.use(middlewares, newGroup);
+        },
+        static: (relativePath: string, root: string) => {
+          akt.static(relativePath, root, newGroup);
         },
       };
 
@@ -121,12 +170,21 @@ const akt = (requestListener?: http.RequestListener) => {
           }
         }
         // data接收完毕后创建context,并执行
-        const ctx = getContext(requset, response);
+        const ctx = getContext(requset, response, akt);
         ctx.handlers = middlewares;
         akt.router.handle(ctx);
       });
     }
   );
+
+  // 捕获错误，用于防止服务器崩溃
+  process.on("uncaughtException", function (err) {
+    console.log(err.stack);
+  });
+
+  process.on("unhandledRejection", (reason, p) => {
+    console.log("Unhandled Rejection at: Promise", p, "reason:", reason);
+  });
 
   akt.akt = akt;
   akt.groups.push(akt);

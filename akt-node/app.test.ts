@@ -40,7 +40,7 @@ test("test server running", async (t) => {
     method: "GET",
   });
   t.is(res.status, 200);
-  t.is(res.data, "<h1>Hello Workd!</h1>");
+  t.is(res.data, "Hello Workd!");
   t.pass();
 });
 
@@ -74,14 +74,6 @@ test("test trie tree", async (t) => {
 });
 
 test("test route group control", async (t) => {
-  {
-    const res = await axios({
-      url: "http://localhost:9999/v1/",
-      method: "GET",
-    });
-    t.is(res.data, `<h1>you are at /v1/</h1>`);
-  }
-
   {
     const res = await axios({
       url: "http://localhost:9999/v1/hello?name=akita",
@@ -134,5 +126,25 @@ test("test middlewares", async (t) => {
     t.is(res.headers["token-v1"], `onlyForV1`);
     t.is(res.headers["token-v2"], `onlyForV2`);
   }
+  t.pass();
+});
+
+test("test static resource", async (t) => {
+  const res = await axios({
+    url: "http://localhost:9999/assets/index.js",
+    method: "GET",
+  });
+  t.is(res.headers["content-type"], `application/javascript`);
+  t.is(res.data, `console.log('hello world');`);
+  t.pass();
+});
+
+test("test template render", async (t) => {
+  const res = await axios({
+    url: "http://localhost:9999/template/",
+    method: "GET",
+  });
+  t.is(res.headers["content-type"], `text/html`);
+  t.is(res.data, `<p>hello akita</p>`);
   t.pass();
 });

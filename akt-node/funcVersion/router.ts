@@ -50,17 +50,28 @@ const getRouter = () => {
       router.handlers.set(`${method}-${pattern}`, handler);
     },
     handle: async (ctx: AktContext) => {
-      const { node, params } = router.getRouter(ctx.method, ctx.path);
-      if (node) {
-        ctx.params = params;
-        const key = `${ctx.method}-${node.pattern}`;
-        const handler = router.handlers.get(key);
-        ctx.handlers.push(handler);
-      } else {
-        ctx.string(404, `404 NOT FOUND: ${ctx.path}`);
+      try {
+        const { node, params } = router.getRouter(ctx.method, ctx.path);
+        if (node) {
+          ctx.params = params;
+          const key = `${ctx.method}-${node.pattern}`;
+          const handler = router.handlers.get(key);
+          ctx.handlers.push(handler);
+        } else {
+          ctx.string(404, `404 NOT FOUND: ${ctx.path}`);
+          return;
+        }
+        await ctx.next();
+        if (ctx.statusCode >= 400) return ctx.res.end(ctx.resData);
+        if (typeof ctx.resData === "object") {
+          ctx.resData = JSON.stringify(ctx.resData);
+        }
+        ctx.res.end(ctx.resData);
+      } catch (e) {
+        ctx.string(500, e.toString());
+        ctx.setHeader("Content-Type", "text/plain");
+        ctx.res.end(ctx.resData);
       }
-      await ctx.next();
-      ctx.res.end(ctx.resData)
     },
     getRouter: (method: string, path: string) => {
       const searchParts = parsePattern(path);
@@ -90,7 +101,10 @@ const getRouter = () => {
         };
       }
 
-      return null;
+      return {
+        node: null,
+        params: null,
+      };
     },
   };
 

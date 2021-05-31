@@ -1,7 +1,9 @@
 import http from "http";
 import url from "url";
+import { join } from "path";
+import { Options, LocalsObject } from "pug";
 
-import { HandlerFunc } from "./akt";
+import { HandlerFunc, Akt } from "./akt";
 
 export type ContextOptionsType = {
   [propsName: string]: any;
@@ -16,10 +18,15 @@ export class Context {
   params: Map<string, string>;
   private index: number;
   hanlders: HandlerFunc[];
-  resData: any
+  resData: any;
+  akt: Akt;
 
   private URL: url.URL;
-  constructor(requset: http.IncomingMessage, response: http.ServerResponse) {
+  constructor(
+    requset: http.IncomingMessage,
+    response: http.ServerResponse,
+    akt: Akt
+  ) {
     this.req = requset;
     this.res = response;
     this.URL = new url.URL(`http://${this.req.headers.host}${this.req.url}`);
@@ -28,7 +35,8 @@ export class Context {
     this.params = new Map();
     this.index = -1;
     this.hanlders = [];
-    this.resData = null
+    this.resData = null;
+    this.akt = akt;
   }
 
   query = (key: string) => {
@@ -74,10 +82,13 @@ export class Context {
     this.resData = data;
   };
 
-  HTML = (code: number, HTML: string) => {
+  HTML = (code: number, name: string, options?: Options & LocalsObject) => {
     this.setHeader("Content-Type", "text/html");
     this.status(code);
-    this.resData = HTML;
+    this.resData = this.akt.pug.renderFile(
+      join(this.akt.templateRoot, name),
+      options
+    );
   };
 
   param = (key: string) => {
@@ -85,10 +96,10 @@ export class Context {
   };
 
   next = async () => {
-    this.index++
-    while(this.index < this.hanlders.length) {
-      this.hanlders[this.index](this)
-      this.index++
+    this.index++;
+    while (this.index < this.hanlders.length) {
+      await this.hanlders[this.index](this);
+      this.index++;
     }
   };
 }

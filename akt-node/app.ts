@@ -5,7 +5,7 @@ const app = akt();
 
 // 添加get
 app.get("/", (ctx: AktContext) => {
-  ctx.HTML(200, "<h1>Hello Workd!</h1>");
+  ctx.string(200, "Hello Workd!");
 });
 
 // 添加post
@@ -30,7 +30,7 @@ app.get("/hi/:name", (ctx: AktContext) => {
 });
 
 // 支持*
-app.get("/assets/*filepath", (ctx: AktContext) => {
+app.get("/wildcard/*filepath", (ctx: AktContext) => {
   ctx.string(200, ` filepath is ${ctx.param("filepath")}`);
 });
 
@@ -42,8 +42,8 @@ const onlyForV1 = async (ctx: AktContext) => {
 const v1 = app.group("/v1");
 v1.use(onlyForV1);
 
-v1.get("/", (ctx) => {
-  ctx.HTML(200, `<h1>you are at ${ctx.path}</h1>`);
+v1.get("/", (ctx: AktContext) => {
+  ctx.string(200, ` you're at /v1`);
 });
 
 v1.get("/hello", (ctx) => {
@@ -73,6 +73,17 @@ v2.post("/login", (ctx: AktContext) => {
     password: ctx.postForm("password"),
     path: ctx.path,
   });
+});
+
+// 支持static
+app.static("/assets", "./assets/");
+
+// 设置模板所在文件夹
+app.loadHTMLGlob("./assets");
+
+// 支持pug模板编译
+app.get("/template", (ctx) => {
+  ctx.HTML(200, "template.pug", { name: "akita" });
 });
 
 app.run("9999", () => {
