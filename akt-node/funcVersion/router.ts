@@ -68,7 +68,8 @@ const getRouter = () => {
         }
         ctx.res.end(ctx.resData);
       } catch (e) {
-        ctx.string(500, e.toString());
+        if (ctx.akt.onError) ctx.akt.onError(e)
+        ctx.string(500, "Internal Server Error");
         ctx.setHeader("Content-Type", "text/plain");
         ctx.res.end(ctx.resData);
       }

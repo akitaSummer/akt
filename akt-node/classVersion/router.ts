@@ -38,20 +38,27 @@ export class Router {
   };
 
   handle = async (ctx: Context) => {
-    const { node, params } = this.getRouter(ctx.method, ctx.path);
-    if (node) {
-      ctx.params = params;
-      const key = `${ctx.method}-${node.pattern}`;
-      const handler = this.handlers.get(key);
-      ctx.hanlders.push(handler);
-    } else {
-      ctx.string(404, `404 NOT FOUND: ${ctx.path}`);
+    try {
+      const { node, params } = this.getRouter(ctx.method, ctx.path);
+      if (node) {
+        ctx.params = params;
+        const key = `${ctx.method}-${node.pattern}`;
+        const handler = this.handlers.get(key);
+        ctx.hanlders.push(handler);
+      } else {
+        ctx.string(404, `404 NOT FOUND: ${ctx.path}`);
+      }
+      await ctx.next();
+      if (typeof ctx.resData === "object") {
+        ctx.resData = JSON.stringify(ctx.resData);
+      }
+      ctx.res.end(ctx.resData);
+    } catch (e) {
+      if (ctx.akt.onError) ctx.akt.onError(e);
+      ctx.string(500, "Internal Server Error");
+      ctx.setHeader("Content-Type", "text/plain");
+      ctx.res.end(ctx.resData);
     }
-    await ctx.next();
-    if (typeof ctx.resData === "object") {
-      ctx.resData = JSON.stringify(ctx.resData);
-    }
-    ctx.res.end(ctx.resData);
   };
   getRouter = (method: string, path: string) => {
     const searchParts = parsePattern(path);

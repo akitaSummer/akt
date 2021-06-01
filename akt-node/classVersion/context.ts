@@ -73,6 +73,7 @@ export class Context {
       this.resData = data;
     } catch (e) {
       console.log(e);
+      if (this.akt.onError) this.akt.onError(e);
       this.res.end(JSON.stringify({ err: e.toStirng() }));
     }
   };

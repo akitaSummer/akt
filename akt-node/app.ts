@@ -1,5 +1,5 @@
-// import akt, { AktContext } from "./classVersion";
-import akt, { AktContext } from "./funcVersion";
+import akt, { AktContext } from "./classVersion";
+// import akt, { AktContext } from "./funcVersion";
 
 const app = akt();
 
@@ -84,6 +84,13 @@ app.loadHTMLGlob("./assets");
 // 支持pug模板编译
 app.get("/template", (ctx) => {
   ctx.HTML(200, "template.pug", { name: "akita" });
+});
+
+// 发生错误后服务器不会崩溃
+app.get("/error", (ctx) => {
+  const err: any = null;
+  const { e } = err;
+  ctx.string(200, e);
 });
 
 app.run("9999", () => {

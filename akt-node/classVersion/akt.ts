@@ -15,6 +15,7 @@ export type HandlerFunc = (ctx: Context) => void;
 const createStaticHandler = (root: string): HandlerFunc => {
   const absolutePath = join(resolve("."), root);
   return async (ctx: AktContext) => {
+    let pipe: http.ServerResponse;
     try {
       const filePath = join(absolutePath, ctx.param("filepath"));
       const fileName = await stat(filePath);
@@ -22,7 +23,7 @@ const createStaticHandler = (root: string): HandlerFunc => {
         const ext = parse(filePath).ext;
         const mimeType = getType(ext);
         ctx.setHeader("Content-Type", mimeType);
-        const pipe = createReadStream(filePath).pipe(ctx.res);
+        pipe = createReadStream(filePath).pipe(ctx.res);
         await new Promise((resolve) => {
           pipe.on("end", () => {
             resolve("");
@@ -32,6 +33,8 @@ const createStaticHandler = (root: string): HandlerFunc => {
         throw Error("File is not found!");
       }
     } catch (e) {
+      if (pipe) pipe.destroy();
+      if (ctx.akt.onError) ctx.akt.onError(e);
       ctx.string(404, "File is not found!");
       ctx.setHeader("Content-Type", "text/plain");
       ctx.res.end();
@@ -44,6 +47,7 @@ class RouterGroup {
   protected parent: RouterGroup | Akt;
   middlewares: HandlerFunc[];
   protected akt: Akt;
+  onError: (err: any, p?: Promise<any>) => void;
 
   constructor(prefix: string, parent: RouterGroup | Akt, akt: Akt) {
     this.prefix = (parent ? parent.prefix : "") + prefix;
@@ -127,6 +131,17 @@ export class Akt extends RouterGroup {
         });
       }
     );
+
+    // 捕获错误，用于防止服务器崩溃
+    process.on("uncaughtException", function (err) {
+      if (this.onError) this.onError(err);
+      console.log(err.stack);
+    });
+
+    process.on("unhandledRejection", (reason, p) => {
+      if (this.onError) this.onError(reason, p);
+      console.log("Unhandled Rejection at: Promise", p, "reason:", reason);
+    });
   }
 
   // 返回server实例，可用于多进程

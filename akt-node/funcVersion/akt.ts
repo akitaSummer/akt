@@ -12,6 +12,7 @@ import getRouter, { AktRouter } from "./router";
 const createStaticHandler = (root: string) => {
   const absolutePath = join(resolve("."), root);
   return async (ctx: AktContext) => {
+    let pipe: http.ServerResponse
     try {
       const filePath = join(absolutePath, ctx.param("filepath"));
       const fileName = await stat(filePath);
@@ -19,7 +20,7 @@ const createStaticHandler = (root: string) => {
         const ext = parse(filePath).ext;
         const mimeType = getType(ext);
         ctx.setHeader("Content-Type", mimeType);
-        const pipe = createReadStream(filePath).pipe(ctx.res);
+        pipe = createReadStream(filePath).pipe(ctx.res);
         await new Promise((resolve) => {
           pipe.on("end", () => {
             resolve("");
@@ -29,6 +30,8 @@ const createStaticHandler = (root: string) => {
         throw Error("File is not found!");
       }
     } catch (e) {
+      if (pipe) pipe.destroy() 
+      if (ctx.akt.onError) ctx.akt.onError(e)
       ctx.string(404, "File is not found!");
       ctx.setHeader("Content-Type", "text/plain");
       ctx.res.end(ctx.resData);
@@ -71,6 +74,7 @@ export type AktType = {
   post: (pattern: string, handler: HandlerFunc) => void;
   run: (addr: string, listeningListener?: () => void) => http.Server;
   loadHTMLGlob: (pattern: string) => void;
+  onError: (e: any, p?: Promise<any>) => void;
   use: (middlewares: HandlerFunc, group?: RouterGroupType) => void;
 } & Omit<RouterGroupType, "addRoute" | "post" | "get" | "use">;
 
@@ -86,6 +90,7 @@ const akt = (requestListener?: http.RequestListener) => {
     akt: null,
     groups: [],
     pug: pug,
+    onError: null,
     templateRoot: null,
     // 设置get请求的路由
     get: (pattern: string, handler: HandlerFunc, group?: RouterGroupType) => {
@@ -179,10 +184,12 @@ const akt = (requestListener?: http.RequestListener) => {
 
   // 捕获错误，用于防止服务器崩溃
   process.on("uncaughtException", function (err) {
+    if (akt.onError) akt.onError(err)
     console.log(err.stack);
   });
 
   process.on("unhandledRejection", (reason, p) => {
+    if (akt.onError) akt.onError(reason, p)
     console.log("Unhandled Rejection at: Promise", p, "reason:", reason);
   });
 

@@ -16,9 +16,10 @@ type Context struct {
 	index      int
 	handlers   []HandlerFunc
 	engine     *Engine
+	onError    func(err interface{})
 }
 
-type Obj map[string]interface{}
+type H map[string]interface{}
 
 func newContext(writer http.ResponseWriter, req *http.Request) *Context {
 	return &Context{

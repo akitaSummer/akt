@@ -148,3 +148,24 @@ test("test template render", async (t) => {
   t.is(res.data, `<p>hello akita</p>`);
   t.pass();
 });
+
+test("test panic recover ", async (t) => {
+  try {
+    await axios({
+      url: "http://localhost:9999/error/",
+      method: "GET",
+    });
+  } catch (e) {
+    t.is(e.response.status, 500);
+    t.is(e.response.data, "Internal Server Error");
+  }
+
+  const res = await axios({
+    url: "http://localhost:9999",
+    method: "GET",
+  });
+  t.is(res.status, 200);
+  t.is(res.data, "Hello Workd!");
+
+  t.pass();
+});

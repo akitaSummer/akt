@@ -22,7 +22,7 @@ func onlyForV2(c *akt.Context) {
 }
 
 func main() {
-	r := akt.New()
+	r := akt.Default()
 	r.GET("/", func(c *akt.Context) {
 		c.String(http.StatusOK, "Hello World!")
 	})
@@ -31,7 +31,7 @@ func main() {
 	})
 
 	r.POST("/login", func(c *akt.Context) {
-		c.JSON(http.StatusOK, akt.Obj{
+		c.JSON(http.StatusOK, akt.H{
 			"username": c.PostForm("username"),
 			"password": c.PostForm("password"),
 		})
@@ -42,7 +42,7 @@ func main() {
 	})
 
 	r.GET("/assets/*filepath", func(c *akt.Context) {
-		c.JSON(http.StatusOK, akt.Obj{"filepath": c.Param("filepath")})
+		c.JSON(http.StatusOK, akt.H{"filepath": c.Param("filepath")})
 	})
 
 	// Route Group Control
@@ -64,7 +64,7 @@ func main() {
 			c.String(http.StatusOK, "hello %s, you're at %s\n", c.Param("name"), c.Path)
 		})
 		v2.POST("/login", func(c *akt.Context) {
-			c.JSON(http.StatusOK, akt.Obj{
+			c.JSON(http.StatusOK, akt.H{
 				"username": c.PostForm("username"),
 				"password": c.PostForm("password"),
 			})
@@ -80,9 +80,14 @@ func main() {
 	})
 
 	r.GET("/template", func(c *akt.Context) {
-		c.HTML(http.StatusOK, "template.tmpl", akt.Obj{
+		c.HTML(http.StatusOK, "template.tmpl", akt.H{
 			"Name": "akita",
 		})
+	})
+
+	r.GET("/panic", func(c *akt.Context) {
+		names := []string{"akita"}
+		c.String(http.StatusOK, names[100])
 	})
 
 	err := r.Run(":9999")

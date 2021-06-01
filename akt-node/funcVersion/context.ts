@@ -81,6 +81,7 @@ const getContext = (
         context.resData = data;
       } catch (e) {
         console.log(e);
+        if (context.akt.onError) akt.onError(e)
         context.res.end(JSON.stringify({ err: e.toStirng() }));
       }
     },
