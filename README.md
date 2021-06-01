@@ -1,6 +1,8 @@
-akt 是一个个人学习用的简易的 web 框架，其设计理念是来源自于 Gin 。
+# Akt
 
-akt 拥有 golang 和 nodejs 两种版本，其中 nodejs 中还拥有 class 和 func 两个版本。
+Akt 是一个个人学习用的简易的 web 框架，其设计理念是来源自于 [Gin](https://github.com/gin-gonic/gin) 。
+
+Akt 拥有 golang 和 nodejs 两种版本，其中 nodejs 中还拥有 class 和 func 两个版本。
 
 ## 使用
 
@@ -248,7 +250,7 @@ app.run("9999", () => {
 });
 ```
 
-继承测试位于`app.test.ts`中
+集成测试位于`app.test.ts`中
 
 ```typescript
 import test from "ava";
